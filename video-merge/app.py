@@ -580,12 +580,14 @@ async function pollJob(jobId){
         mergeStatus.textContent = '完成';
         mergeResult.innerHTML = `
             <p>输出文件: ${job.out_path}</p>
-            <a href="/clips/${encodeURIComponent(job.out_path)}" download>
-                <button>下载切片</button>
-            </a>
-            <button id="submitVideoBtn">烦心事远离账号投稿</button>
-            <div id="videoFormContainer"></div>
-        </p>`;
+            <div style="display:flex; gap:12px; align-items:center; margin-top:8px;">
+                <a href="/clips/${encodeURIComponent(job.out_path)}" download>
+                    <button>下载切片</button>
+                </a>
+                <button id="submitVideoBtn">烦心事远离账号投稿</button>
+            </div>
+            <div id="videoFormContainer" style="margin-top:12px;"></div>
+        `;
 
         const submitBtn = document.getElementById('submitVideoBtn');
         submitBtn.addEventListener('click', () => {
@@ -608,53 +610,51 @@ async function pollJob(jobId){
             const formDiv = document.getElementById('uploadForm');
 
             uploadBtn.addEventListener('click', async () => {
-                // 禁用整个表单，防止重复点击
-                formDiv.querySelectorAll('input, button').forEach(el => el.disabled = true);
-                uploadBtn.textContent = '投稿中...';
-
                 const fileName = job.out_path;
                 const title = document.getElementById('videoTitle').value.trim();
                 const desc = document.getElementById('videoDesc').value.trim();
                 let tags = document.getElementById('videoTags').value.trim();
                 tags = tags.split(/\s+/).filter(t => t).join(',');
-                const userName = document.getElementById('usernameInput').value.trim();
 
+                // 必填验证
                 if(!fileName || !title){
                     alert('标题不能为空');
-                    formDiv.querySelectorAll('input, button').forEach(el => el.disabled = false);
-                    uploadBtn.textContent = '投稿到B站';
                     return;
                 }
 
+                // 禁用表单，显示投稿提示 **仅在验证通过后**
+                formDiv.querySelectorAll('input, button').forEach(el => el.disabled = true);
+                uploadBtn.textContent = '投稿中...';
+                const resultDiv = document.getElementById('uploadResult');
+                resultDiv.innerHTML = `<p style="color:orange;">投稿过程中可能会因为网络原因出现异常提示，不用担心，投稿正在进行中，可以联系xct258获取帮助...</p>`;
+
+                const userName = document.getElementById('usernameInput').value.trim();
                 const fullDesc = `投稿用户：${userName}\n${desc}\n使用 Web 投稿工具切片投稿`;
 
-                try{
+                try {
                     const res = await fetch('/api/upload_bili', {
                         method: 'POST',
                         headers: {'Content-Type':'application/json'},
                         body: JSON.stringify({file:fileName, title, description:fullDesc, tags})
                     });
                     const data = await res.json();
-                    const resultDiv = document.getElementById('uploadResult');
+
                     if(data.success){
                         uploadBtn.textContent = '投稿成功！';
                         uploadBtn.disabled = true;
-                        const msg = data.cmd_preview || data.output || data.message || "成功";
-                        resultDiv.innerHTML = `<pre style="color:green;">投稿成功：\n${msg}</pre>`;
+                        resultDiv.innerHTML = `<pre style="color:green;">投稿成功：\n${data.cmd_preview || data.output || data.message || "成功"}</pre>`;
                     } else {
-                        resultDiv.innerHTML = `<pre style="color:red;">投稿失败：\n${data.error || data.message}</pre>`;
-                        // 出错时允许修改表单再次提交
-                        formDiv.querySelectorAll('input, button').forEach(el => el.disabled = false);
                         uploadBtn.textContent = '投稿失败！';
+                        formDiv.querySelectorAll('input, button').forEach(el => el.disabled = false);
+                        resultDiv.innerHTML = `<pre style="color:red;">投稿失败：\n${data.error || data.message}</pre>`;
                     }
                 } catch(e){
                     console.error(e);
-                    const resultDiv = document.getElementById('uploadResult');
-                    resultDiv.innerHTML = `<pre style="color:red;">投稿异常：\n${e}</pre>`;
-                    formDiv.querySelectorAll('input, button').forEach(el => el.disabled = false);
                     uploadBtn.textContent = '投稿异常！';
+                    formDiv.querySelectorAll('input, button').forEach(el => el.disabled = false);
+                    resultDiv.innerHTML = `<pre style="color:red;">投稿异常：\n${e}</pre>`;
                 }
-            }, {once:true}); // 确保事件只绑定一次
+            });
         }, {once:true});
     } else if(job.status === 'error'){
         mergeStatus.textContent = '出错';
