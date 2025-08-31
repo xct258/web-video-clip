@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
-from fastapi import FastAPI, HTTPException, Request, BackgroundTasks
+from fastapi import FastAPI, HTTPException, Request, BackgroundTasks, Body
 from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -61,6 +61,7 @@ class VideoClip(BaseModel):
 class MultiVideoRequest(BaseModel):
     videos: List[VideoClip]
     out_basename: Optional[str] = None
+    username: str  # 新增字段
 
 class SliceJob(BaseModel):
     id: str
@@ -70,7 +71,7 @@ class SliceJob(BaseModel):
     error: Optional[str] = None
 
 # ------------------ FastAPI 应用 ------------------
-app = FastAPI(title="Multi-Video Slicer", version="1.3")
+app = FastAPI(title="Multi-Video Slicer", version="1.4")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=TEMPLATE_DIR)
 JOBS: dict[str, SliceJob] = {}
@@ -149,14 +150,16 @@ async def video_tree():
 
 # ------------------ 批量切片并合并 ------------------
 @app.post("/api/slice_merge_all")
-async def slice_merge_all(body: MultiVideoRequest, bg: BackgroundTasks):
+async def slice_merge_all(body: MultiVideoRequest = Body(...), bg: BackgroundTasks = None):
+    username = getattr(body, "username", None) or "user"
     if not ffmpeg_exists():
         raise HTTPException(500, "ffmpeg not found in PATH")
     
     ts = datetime.now().strftime("%Y%m%d-%H%M%S")
-    out_basename = body.out_basename or f"khx-{ts}"
+    # 输出文件名改为：用户名-原本名字-时间戳.mp4
+    out_basename = f"{username}-{body.out_basename or 'merged'}-{ts}"
     out_path = OUTPUT_DIR / f"{out_basename}.mp4"
-    
+
     job_id = f"job_{ts}_{os.getpid()}"
     job = SliceJob(id=job_id, source="multiple", status="queued", out_path=str(out_path.name))
     JOBS[job_id] = job
@@ -196,6 +199,7 @@ async def slice_merge_all(body: MultiVideoRequest, bg: BackgroundTasks):
     bg.add_task(run_merge, job, body.videos, out_path)
     return {"job_id": job_id, "out_file": job.out_path}
 
+
 @app.get("/api/job/{job_id}")
 async def job_status(job_id: str):
     job = JOBS.get(job_id)
@@ -209,6 +213,49 @@ async def get_clip(name: str):
     if not path.exists():
         raise HTTPException(404, "Clip not found")
     return FileResponse(path)
+
+# ------------------ B站投稿（测试模式） ------------------
+@app.post("/api/upload_bili")
+async def upload_bili(data: dict = Body(...)):
+    file_name = data.get("file")
+    title = data.get("title", "").strip()
+    description = data.get("description", "").strip()
+    tags = data.get("tags", "").strip()
+
+    if not file_name or not title:
+        return {"success": False, "message": "文件名或标题不能为空"}
+
+    video_path = OUTPUT_DIR / file_name
+    if not video_path.exists():
+        return {"success": False, "message": "切片视频不存在"}
+
+    # 构建将要执行的命令
+    cmd = [
+        "apps/biliup-rs",
+        "-u", "cookies/bilibili/cookies-烦心事远离.json",
+        "upload",
+        "--copyright", "2",
+        "--source", "https://live.bilibili.com/1962720",
+        "--tid", "17",
+        "--title", title,
+        "--desc", description,
+        "--tag", tags,
+        str(video_path)
+    ]
+
+    # 测试模式：不真正执行，返回命令字符串
+    # return {
+    #     "success": True,
+    #     "message": "测试模式，不会实际上传",
+    #     "cmd_preview": " ".join(cmd)
+    # }
+
+    # 真实上传模式（调试完再打开）
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        return {"success": True, "output": result.stdout}
+    except subprocess.CalledProcessError as e:
+        return {"success": False, "error": e.stderr}
 
 # ------------------ 前端 HTML & CSS ------------------
 INDEX_HTML = TEMPLATE_DIR / "index.html"
@@ -266,6 +313,11 @@ INDEX_HTML.write_text("""
 <div class="panel">
 <button id="addClip">添加片段</button>
 <div id="clipList"></div>
+</div>
+
+<div class="panel">
+    <label>请输入用户名：</label>
+    <input id="usernameInput" type="text" placeholder="输入您的B站名称" style="width:100%; margin-bottom:8px;">
 </div>
 
 <div class="panel">
@@ -497,15 +549,27 @@ document.getElementById('addClip').addEventListener('click', () => {
 
 
 // ------------------ 提交任务 ------------------
-document.getElementById('mergeAllBtn').addEventListener('click', async ()=>{
-    if(videoTasks.length===0){ alert('请至少添加一个视频片段'); return; }
+document.getElementById('mergeAllBtn').addEventListener('click', async ()=> {
+    if(videoTasks.length===0){ 
+        alert('请至少添加一个视频片段'); 
+        return; 
+    }
+
+    const username = document.getElementById('usernameInput').value.trim();
+    if(!username) {
+        alert('请输入用户名');
+        return;
+    }
+
     mergeStatus.textContent='提交任务...';
-    const res=await fetch('/api/slice_merge_all',{
+
+    // POST 时把 username 也传给后端
+    const res = await fetch('/api/slice_merge_all', {
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({videos:videoTasks})
+        body: JSON.stringify({videos:videoTasks, username: username})
     });
-    const data=await res.json();
+    const data = await res.json();
     pollJob(data.job_id);
 });
 
@@ -519,7 +583,79 @@ async function pollJob(jobId){
             <a href="/clips/${encodeURIComponent(job.out_path)}" download>
                 <button>下载切片</button>
             </a>
-            </p>`;
+            <button id="submitVideoBtn">烦心事远离账号投稿</button>
+            <div id="videoFormContainer"></div>
+        </p>`;
+
+        const submitBtn = document.getElementById('submitVideoBtn');
+        submitBtn.addEventListener('click', () => {
+            const container = document.getElementById('videoFormContainer');
+            if(container.innerHTML.trim() !== '') return; // 已经生成过表单
+            container.innerHTML = `
+                <div id="uploadForm" style="margin-top:12px;">
+                    <label>视频标题：</label><br>
+                    <input id="videoTitle" type="text" placeholder="输入视频标题" style="width:100%; margin-bottom:8px;">
+                    <label>视频简介：</label><br>
+                    <input id="videoDesc" type="text" placeholder="输入视频简介" style="width:100%; margin-bottom:8px;">
+                    <label>视频标签 (空格分隔)：</label><br>
+                    <input id="videoTags" type="text" placeholder="标签1 标签2 ..." style="width:100%; margin-bottom:8px;">
+                    <button id="uploadBiliBtn">投稿到B站</button>
+                    <div id="uploadResult" style="margin-top:8px;"></div>
+                </div>
+            `;
+
+            const uploadBtn = document.getElementById('uploadBiliBtn');
+            const formDiv = document.getElementById('uploadForm');
+
+            uploadBtn.addEventListener('click', async () => {
+                // 禁用整个表单，防止重复点击
+                formDiv.querySelectorAll('input, button').forEach(el => el.disabled = true);
+                uploadBtn.textContent = '投稿中...';
+
+                const fileName = job.out_path;
+                const title = document.getElementById('videoTitle').value.trim();
+                const desc = document.getElementById('videoDesc').value.trim();
+                let tags = document.getElementById('videoTags').value.trim();
+                tags = tags.split(/\s+/).filter(t => t).join(',');
+                const userName = document.getElementById('usernameInput').value.trim();
+
+                if(!fileName || !title){
+                    alert('标题不能为空');
+                    formDiv.querySelectorAll('input, button').forEach(el => el.disabled = false);
+                    uploadBtn.textContent = '投稿到B站';
+                    return;
+                }
+
+                const fullDesc = `投稿用户：${userName}\n${desc}\n使用 Web 投稿工具切片投稿`;
+
+                try{
+                    const res = await fetch('/api/upload_bili', {
+                        method: 'POST',
+                        headers: {'Content-Type':'application/json'},
+                        body: JSON.stringify({file:fileName, title, description:fullDesc, tags})
+                    });
+                    const data = await res.json();
+                    const resultDiv = document.getElementById('uploadResult');
+                    if(data.success){
+                        uploadBtn.textContent = '投稿成功！';
+                        uploadBtn.disabled = true;
+                        const msg = data.cmd_preview || data.output || data.message || "成功";
+                        resultDiv.innerHTML = `<pre style="color:green;">投稿成功：\n${msg}</pre>`;
+                    } else {
+                        resultDiv.innerHTML = `<pre style="color:red;">投稿失败：\n${data.error || data.message}</pre>`;
+                        // 出错时允许修改表单再次提交
+                        formDiv.querySelectorAll('input, button').forEach(el => el.disabled = false);
+                        uploadBtn.textContent = '投稿失败！';
+                    }
+                } catch(e){
+                    console.error(e);
+                    const resultDiv = document.getElementById('uploadResult');
+                    resultDiv.innerHTML = `<pre style="color:red;">投稿异常：\n${e}</pre>`;
+                    formDiv.querySelectorAll('input, button').forEach(el => el.disabled = false);
+                    uploadBtn.textContent = '投稿异常！';
+                }
+            }, {once:true}); // 确保事件只绑定一次
+        }, {once:true});
     } else if(job.status === 'error'){
         mergeStatus.textContent = '出错';
         mergeResult.innerHTML = `<pre>${job.error || 'Unknown error'}</pre>`;
@@ -528,6 +664,7 @@ async function pollJob(jobId){
         setTimeout(() => pollJob(jobId), 800);
     }
 }
+
 
 // ------------------ 初始化页面 ------------------
 initPage();
