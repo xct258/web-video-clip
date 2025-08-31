@@ -154,7 +154,7 @@ async def slice_merge_all(body: MultiVideoRequest, bg: BackgroundTasks):
         raise HTTPException(500, "ffmpeg not found in PATH")
     
     ts = datetime.now().strftime("%Y%m%d-%H%M%S")
-    out_basename = body.out_basename or f"merged_{ts}"
+    out_basename = body.out_basename or f"khx-{ts}"
     out_path = OUTPUT_DIR / f"{out_basename}.mp4"
     
     job_id = f"job_{ts}_{os.getpid()}"
@@ -218,7 +218,7 @@ INDEX_HTML.write_text("""
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>多视频多片段切片工具</title>
+<title>切片</title>
 <link rel="stylesheet" href="/static/style.css">
 
 <!-- 内联默认强调色 -->
@@ -237,7 +237,7 @@ INDEX_HTML.write_text("""
 
 <!-- 主内容 -->
 <div class="container" id="mainContent" style="display:none;">
-<h1>多视频多片段切片工具</h1>
+<h1>括弧笑直播切片工具</h1>
 
 <div class="panel">
 <label>选择视频文件：</label>
@@ -510,18 +510,22 @@ document.getElementById('mergeAllBtn').addEventListener('click', async ()=>{
 });
 
 async function pollJob(jobId){
-    const res=await fetch(`/api/job/${jobId}`);
-    const job=await res.json();
-    if(job.status==='done'){
-        mergeStatus.textContent='完成';
-        mergeResult.innerHTML=`<p>输出: <a href="/clips/${encodeURIComponent(job.out_path)}" target="_blank">${job.out_path}</a></p>
-        <video controls style="width:100%; max-height:200px;" src="/clips/${encodeURIComponent(job.out_path)}"></video>`;
-    }else if(job.status==='error'){
-        mergeStatus.textContent='出错';
-        mergeResult.innerHTML=`<pre>${job.error||'Unknown error'}</pre>`;
-    }else{
-        mergeStatus.textContent='处理中...';
-        setTimeout(()=>pollJob(jobId),800);
+    const res = await fetch(`/api/job/${jobId}`);
+    const job = await res.json();
+    if(job.status === 'done'){
+        mergeStatus.textContent = '完成';
+        mergeResult.innerHTML = `
+            <p>输出文件: ${job.out_path}</p>
+            <a href="/clips/${encodeURIComponent(job.out_path)}" download>
+                <button>下载切片</button>
+            </a>
+            </p>`;
+    } else if(job.status === 'error'){
+        mergeStatus.textContent = '出错';
+        mergeResult.innerHTML = `<pre>${job.error || 'Unknown error'}</pre>`;
+    } else {
+        mergeStatus.textContent = '处理中...';
+        setTimeout(() => pollJob(jobId), 800);
     }
 }
 
