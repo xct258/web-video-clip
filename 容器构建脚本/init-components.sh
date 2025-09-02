@@ -1,6 +1,6 @@
 #!/bin/bash
 
-mkdir -p /rec/脚本
+mkdir -p /opt/web-video-clip/脚本/
 
 apt install -y ffmpeg python3 python3-pip
 pip install fastapi uvicorn[standard] jinja2 pydantic --break-system-packages
@@ -32,4 +32,4 @@ mv /root/tmp/7zz /bin/7zz
 biliup_file=$(find /root/tmp -type f -name "biliup")
 mv "$biliup_file" /opt/bililive/apps/biliup-rs
 
-wget -O /rec/脚本/app.py https://raw.githubusercontent.com/xct258/web-video-clip/main/video-merge/app.py
+wget -O /opt/web-video-clip/脚本/app.py https://raw.githubusercontent.com/xct258/web-video-clip/main/video-merge/app.py

@@ -1,12 +1,22 @@
 #!/bin/bash
 
 # --- 配置 ---
-APP_DIR="/rec/脚本"                  # 中文路径目录
+APP_DIR="/rec/web-video-clip/脚本"                  # 中文路径目录
 LOGFILE="/rec/log/uvicorn.log"   # 日志文件
 MAXSIZE=$((10 * 1024 * 1024))        # 10MB
 
-# --- 确保日志目录存在 ---
+# --- 确保目录存在 ---
 mkdir -p "$(dirname "$LOGFILE")"
+mkdir -p "$(dirname "$APP_DIR")"
+
+# 复制 /opt/web-video-clip/脚本 到 /rec/web-video-clip/脚本
+for file in /opt/bililive/web-video-clip/脚本/*; do
+    filename=$(basename "$file")
+    target="/rec/web-video-clip/脚本/$filename"
+    if [ -f "$file" ] && [ ! -f "$target" ]; then
+        cp "$file" "$target"
+    fi
+done
 
 # --- 后台日志裁剪 ---
 (
