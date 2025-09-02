@@ -11,12 +11,7 @@ ENV LANG=zh_CN.UTF-8
 ENV TZ=Asia/Shanghai
 
 # 安装构建所需的相关依赖
-RUN apt-get update \
-    # 安装必要的软件包
-    && apt-get install -y pyhton3 ffmpeg python3-pip \
-    && pip install fastapi uvicorn[standard] jinja2 pydantic --break-system-packages \
-    # 创建目录和构造脚本
-    && mkdir -p /root/tmp \
+RUN mkdir -p /root/tmp \
     # 下载临时启动脚本
     && wget -O /root/tmp/init-components.sh https://raw.githubusercontent.com/xct258/web-video-clip/main/容器构建脚本/init-components.sh \
     && chmod +x /root/tmp/init-components.sh \

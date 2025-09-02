@@ -2,6 +2,9 @@
 
 mkdir -p /rec/脚本
 
+apt install -y ffmpeg python3 python3-pip
+pip install fastapi uvicorn[standard] jinja2 pydantic --break-system-packages
+
 # 获取 7z 下载链接
 latest_release_7z=$(curl -s https://api.github.com/repos/ip7z/7zip/releases/latest)
 latest_7z_x64_url=$(echo "$latest_release_7z" | jq -r '.assets[] | select(.name | test("linux-x64.tar.xz")) | .browser_download_url')
