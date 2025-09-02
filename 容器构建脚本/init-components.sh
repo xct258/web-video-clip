@@ -2,7 +2,7 @@
 
 mkdir -p /opt/web-video-clip/脚本/
 
-apt install -y ffmpeg python3 python3-pip curl jq tar utils git nano
+apt install -y ffmpeg python3 python3-pip curl jq tar git nano
 pip install fastapi uvicorn[standard] jinja2 pydantic --break-system-packages
 
 # 获取 7z 下载链接
