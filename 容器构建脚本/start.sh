@@ -10,7 +10,7 @@ mkdir -p "$(dirname "$LOGFILE")"
 mkdir -p "$(dirname "$APP_DIR")"
 
 # 复制 /opt/web-video-clip/脚本 到 /rec/web-video-clip/脚本
-for file in /opt/bililive/web-video-clip/脚本/*; do
+for file in /opt/web-video-clip/脚本/*; do
     filename=$(basename "$file")
     target="/rec/web-video-clip/脚本/$filename"
     if [ -f "$file" ] && [ ! -f "$target" ]; then
