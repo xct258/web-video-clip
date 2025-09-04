@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # --- 配置 ---
-APP_DIR="/rec/web-video-clip/脚本"                  # 中文路径目录
+APP_DIR="/rec/app"
+APPS_DIR="/rec/apps"
 LOGFILE="/rec/log/uvicorn.log"   # 日志文件
 MAXSIZE=$((10 * 1024 * 1024))        # 10MB
 
@@ -9,10 +10,19 @@ MAXSIZE=$((10 * 1024 * 1024))        # 10MB
 mkdir -p "$(dirname "$LOGFILE")"
 mkdir -p "$(dirname "$APP_DIR")"
 
-# 复制 /opt/web-video-clip/脚本 到 /rec/web-video-clip/脚本
-for file in /opt/web-video-clip/脚本/*; do
+# 复制 /opt/web-video-clip/app 到 /rec/app
+for file in /opt/web-video-clip/app/*; do
     filename=$(basename "$file")
-    target="/rec/web-video-clip/脚本/$filename"
+    target="/rec/app/$filename"
+    if [ -f "$file" ] && [ ! -f "$target" ]; then
+        cp "$file" "$target"
+    fi
+done
+
+# 复制 /opt/web-video-clip/apps 到 /rec/apps
+for file in /opt/web-video-clip/apps/*; do
+    filename=$(basename "$file")
+    target="/rec/app/$filename"
     if [ -f "$file" ] && [ ! -f "$target" ]; then
         cp "$file" "$target"
     fi

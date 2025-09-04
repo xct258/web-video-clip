@@ -1,8 +1,8 @@
 #!/bin/bash
 
-mkdir -p /opt/web-video-clip/脚本/
+mkdir -p /opt/web-video-clip/app/ /root/tmp/ /opt/web-video-clip/apps/
 
-apt install -y ffmpeg python3 python3-pip curl jq git nano
+apt install -y ffmpeg python3 python3-pip tar xz-utils curl jq git nano
 pip install fastapi uvicorn[standard] jinja2 pydantic --break-system-packages
 
 # 获取 7z 下载链接
@@ -30,6 +30,6 @@ tar -xf /root/tmp/biliup-rs.tar.xz -C /root/tmp
 chmod +x /root/tmp/7zz
 mv /root/tmp/7zz /bin/7zz
 biliup_file=$(find /root/tmp -type f -name "biliup")
-mv "$biliup_file" /opt/bililive/apps/biliup-rs
+mv "$biliup_file" /opt/web-video-clip/apps/biliup-rs
 
-wget -O /opt/web-video-clip/脚本/app.py https://raw.githubusercontent.com/xct258/web-video-clip/main/video-merge/app.py
+wget -O /opt/web-video-clip/app/app.py https://raw.githubusercontent.com/xct258/web-video-clip/main/video-merge/app.py
