@@ -642,7 +642,7 @@ async function pollJob(jobId){
                 resultDiv.innerHTML = `<p style="color:orange;">投稿过程中可能会因为网络原因出现异常提示，不用担心，投稿正在进行中，可以联系xct258获取帮助...</p>`;
 
                 const userName = document.getElementById('usernameInput').value.trim();
-                const fullDesc = `投稿用户：${userName}\n${desc}\n使用投稿工具切片投稿\n项目地址：\nhttps://github.com/xct258/web-video-clip`;
+                const fullDesc = `投稿用户：${userName}\n\n${desc}\n\n使用投稿工具切片投稿\n\n项目地址：\nhttps://github.com/xct258/web-video-clip`;
 
                 try {
                     const res = await fetch('/api/upload_bili', {
