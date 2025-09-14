@@ -231,8 +231,8 @@ async def upload_bili(data: dict = Body(...)):
 
     # 构建将要执行的命令
     cmd = [
-        "apps/biliup-rs",
-        "-u", "cookies/bilibili/cookies-烦心事远离.json",
+        "/rec/app/apps/biliup-rs",
+        "-u", "/rec/app/cookies/bilibili/cookies-烦心事远离.json",
         "upload",
         "--copyright", "2",
         "--source", "https://live.bilibili.com/1962720",
@@ -297,6 +297,14 @@ INDEX_HTML.write_text("""
     <button id="previewBtn" style="margin-top:10px;">预览</button>
 </div>
 
+<!-- 独立的控制按钮容器，视频下方显示 -->
+<div id="videoControlsContainer" style="margin-top:8px; display:none; text-align:center;">
+    <button id="rewindBtn">« 后退5秒</button>
+    <button id="forwardBtn">前进5秒 »</button>
+</div>
+
+
+
 <div class="panel grid">
 <div>
 <label>开始：</label>
@@ -339,6 +347,11 @@ const clipList = document.getElementById('clipList');
 const mergeStatus = document.getElementById('mergeStatus');
 const mergeResult = document.getElementById('mergeResult');
 const fileTreeDiv = document.getElementById('fileTree');
+const previewBtn = document.getElementById('previewBtn');
+const videoPlaceholder = document.getElementById('videoPlaceholder');
+const videoControlsContainer = document.getElementById('videoControlsContainer');
+const rewindBtn = document.getElementById('rewindBtn');
+const forwardBtn = document.getElementById('forwardBtn');
 
 const dynamicImageUrl = 'https://random-image.xct258.top/';
 
@@ -629,7 +642,7 @@ async function pollJob(jobId){
                 resultDiv.innerHTML = `<p style="color:orange;">投稿过程中可能会因为网络原因出现异常提示，不用担心，投稿正在进行中，可以联系xct258获取帮助...</p>`;
 
                 const userName = document.getElementById('usernameInput').value.trim();
-                const fullDesc = `投稿用户：${userName}\n${desc}\n使用 Web 投稿工具切片投稿`;
+                const fullDesc = `投稿用户：${userName}\n${desc}\n使用投稿工具切片投稿\n项目地址：\nhttps://github.com/xct258/web-video-clip`;
 
                 try {
                     const res = await fetch('/api/upload_bili', {
@@ -665,25 +678,34 @@ async function pollJob(jobId){
     }
 }
 
-
 // ------------------ 初始化页面 ------------------
 initPage();
 
-
-
-// 绑定预览按钮点击事件
+// 点击“预览”按钮
 previewBtn.addEventListener('click', () => {
     if(currentVideoName){
         player.src = `/api/video/${encodeURIComponent(currentVideoName)}`;
         player.style.display = 'block';
-        document.getElementById('videoPlaceholder').style.display = 'none';
+        videoPlaceholder.style.display = 'none';
+        videoControlsContainer.style.display = 'block'; // 显示独立按钮
         player.play();
         previewBtn.style.display = 'none';
-        updateMarkButtons(); // 重新更新按钮状态
+        updateMarkButtons();
     } else {
         alert('请先选择视频');
     }
 });
+
+// 快退5秒
+rewindBtn.addEventListener('click', () => {
+    player.currentTime = Math.max(player.currentTime - 5, 0);
+});
+
+// 快进5秒
+forwardBtn.addEventListener('click', () => {
+    player.currentTime = Math.min(player.currentTime + 5, player.duration);
+});
+
 
 </script>
 

@@ -1,0 +1,8 @@
+services:
+  debian-web-video-clip:
+    container_name: debian-web-video-clip
+    image: xct258/web-video-clip
+    network_mode: host
+    volumes:
+      - ./data:/rec
+    restart: always
