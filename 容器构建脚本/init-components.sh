@@ -3,7 +3,7 @@
 mkdir -p /opt/web-video-clip/app/ /root/tmp/ /opt/web-video-clip/apps/
 
 apt install -y ffmpeg python3 python3-pip tar xz-utils curl jq git nano
-pip install fastapi uvicorn[standard] jinja2 pydantic --break-system-packages
+pip install fastapi uvicorn[standard] jinja2 pydantic python-multipart --break-system-packages
 
 # 获取 7z 下载链接
 latest_release_7z=$(curl -s https://api.github.com/repos/ip7z/7zip/releases/latest)
